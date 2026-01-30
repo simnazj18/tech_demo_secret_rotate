@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Secrets Runtime Dashboard</title>
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at top left, #1a1c29, #0f1016);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar {
+            background: rgba(15, 16, 22, 0.8) !important;
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .card {
+            background: transparent;
+            border: none;
+        }
+
+        .status-badge {
+            font-size: 0.8em;
+            padding: 0.4em 0.8em;
+            border-radius: 20px;
+        }
+
+        .status-ok {
+            background: rgba(25, 135, 84, 0.2);
+            color: #75b798;
+            border: 1px solid rgba(25, 135, 84, 0.3);
+        }
+
+        .status-warn {
+            background: rgba(255, 193, 7, 0.1);
+            color: #ffda6a;
+            border: 1px solid rgba(255, 193, 7, 0.2);
+        }
+
+        .status-err {
+            background: rgba(220, 53, 69, 0.2);
+            color: #ea868f;
+            border: 1px solid rgba(220, 53, 69, 0.3);
+        }
+
+        .table-custom {
+            --bs-table-bg: transparent;
+            --bs-table-color: #e0e0e0;
+            --bs-table-border-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .table-custom th {
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid px-4">
+            <a class="navbar-brand d-flex align-items-center gap-2" href="#">
+                <i class="bi bi-shield-lock-fill text-primary"></i>
+                <span class="fw-bold">SecretsOps</span>
+            </a>
+            <span class="navbar-text ms-auto text-muted small">
+                <i class="bi bi-cloud-check me-1"></i> Connected to Azure Key Vault
+            </span>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid px-4 py-5 mt-5">
+
+        <!-- Header -->
+        <div class="row mb-4 animate-fade-in">
+            <div class="col-md-8">
+                <h2 class="fw-bold fs-3 mb-1">Runtime Drift Detection</h2>
+                <p class="text-secondary">Real-time correlation between Kubernetes workloads and Azure Key Vault.</p>
+            </div>
+            <div class="col-md-4 text-end align-self-end">
+                <button class="btn btn-primary btn-sm rounded-pill px-3" onclick="location.reload()">
+                    <i class="bi bi-arrow-clockwise me-1"></i> Refresh Scan
+                </button>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="row g-4 mb-5">
+            <div class="col-md-4">
+                <div class="glass-panel p-4 h-100">
+                    <h6 class="text-uppercase text-secondary mb-3 small fw-bold">Active Secrets (K8s)</h6>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <span class="display-5 fw-bold">{{ k8s_usage|length }}</span>
+                        <span class="text-success"><i class="bi bi-arrow-up-short"></i></span>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="col-md-12 h-100"> <!-- Fix nesting -->
+                    <div class="glass-panel p-4 h-100">
+                        <h6 class="text-uppercase text-secondary mb-3 small fw-bold">Managed in AKV</h6>
+                        <div class="d-flex align-items-baseline gap-2">
+                            <span class="display-5 fw-bold">{{ akv_secrets|length }}</span>
+                            <span class="text-primary small overlay-text">Sources</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="glass-panel p-4 h-100">
+                    <h6 class="text-uppercase text-secondary mb-3 small fw-bold">Drift Status</h6>
+                    <div class="d-flex align-items-baseline gap-2">
+                        <!-- Mock Logic for Drift Status Visual -->
+                        {% set drift_count = 0 %}
+                        {% for row in k8s_usage %}
+                        {% if 'Found' not in row.akv_status %}
+                        {% set drift_count = drift_count + 1 %}
+                        {% endif %}
+                        {% endfor %}
+
+                        {% if drift_count == 0 %}
+                        <span class="fs-4 fw-bold text-success">Synced</span>
+                        <i class="bi bi-check-circle-fill text-success"></i>
+                        {% else %}
+                        <span class="fs-4 fw-bold text-warning">{{ drift_count }} Unknown</span>
+                        <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Table -->
+        <div class="glass-panel p-0 overflow-hidden">
+            <div class="p-4 border-bottom border-light border-opacity-10">
+                <h5 class="mb-0">Detected Secrets Usage</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-custom table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Service / Pod</th>
+                            <th>Check Mechanism</th>
+                            <th>K8s Secret Name</th>
+                            <th>AKV Secret Value</th>
+                            <th>AKV Correlation</th>
+                            <th class="text-end pe-4">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in k8s_usage %}
+                        <tr>
+                            <td class="ps-4">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="bg-primary bg-opacity-10 p-2 rounded-circle text-primary">
+                                        <i class="bi bi-box-seam"></i>
+                                    </div>
+                                    <span class="fw-semibold">{{ row.service_pod }}</span>
+                                </div>
+                            </td>
+                            <td><span class="badge bg-dark border border-secondary text-secondary">{{ row.mechanism
+                                    }}</span></td>
+                            <td class="font-monospace text-info">{{ row.k8s_secret }}</td>
+                            <td class="font-monospace text-warning">
+                                {% if row.akv_value %}
+                                <span title="Value Hidden">******</span>
+                                {% else %}
+                                <span class="text-muted small">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if 'Found' in row.akv_status or 'Synced' in row.akv_status %}
+                                <span class="text-light"><i class="bi bi-link-45deg me-1"></i> {{ row.akv_status
+                                    }}</span>
+                                {% else %}
+                                <span class="text-muted fst-italic">{{ row.akv_status }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4">
+                                {% if 'Found' in row.akv_status or 'Synced' in row.akv_status %}
+                                <span class="status-badge status-ok">Synced <i class="bi bi-check2"></i></span>
+                                {% else %}
+                                <span class="status-badge status-err">Drift Detected</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">
+                                <i class="bi bi-search display-6 d-block mb-3 opacity-25"></i>
+                                No secrets usage detected in current namespace.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div
+                class="p-3 bg-dark bg-opacity-25 border-top border-light border-opacity-10 text-center text-secondary small">
+                Scanning Namespace: <strong>default</strong> • Vault ID: {{ vault_url }}
+            </div>
+        </div>
+
+        <!-- AKV Inventory Section -->
+        <h5 class="mb-3 mt-5">Vault Inventory</h5>
+        <div class="glass-panel p-0 overflow-hidden">
+            <div class="table-responsive">
+                <table class="table table-custom table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Secret Name</th>
+                            <th>Value</th>
+                            <th>Expiry</th>
+                            <th>Status</th>
+                            <th class="text-end pe-4">Last Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for secret in akv_secrets %}
+                        <tr>
+                            <td class="ps-4 fw-bold text-info">{{ secret.name }}</td>
+                            <td class="font-monospace text-warning">
+                                <span title="Value Hidden">******</span>
+                            </td>
+                            <td>
+                                {% if secret.expires_on %}
+                                {% if secret.days_remaining is not none and secret.days_remaining <= 1 %} <span
+                                    class="status-badge status-err">Critical ({{ secret.days_remaining }} days)</span>
+                                    {% else %}
+                                    <span class="text-muted small">{{ secret.expires_on.strftime('%Y-%m-%d') }}</span>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-secondary small">Never</span>
+                                    {% endif %}
+                            </td>
+                            <td>
+                                {% if secret.status == "Expiring Soon (Auto-Rotation Triggered)" %}
+                                <span class="status-badge status-err">Rotating... <i
+                                        class="bi bi-arrow-repeat spin"></i></span>
+                                {% elif secret.enabled %}
+                                <span class="status-badge status-ok">Enabled</span>
+                                {% else %}
+                                <span class="status-badge status-err">Disabled</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-4 text-muted small">{{ secret.updated_on.strftime('%Y-%m-%d') if
+                                secret.updated_on else '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="4" class="text-center text-muted py-3">No secrets found in Vault.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

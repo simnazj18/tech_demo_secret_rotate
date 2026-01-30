@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "secrets-dashboard.fullname" . }}
+  labels:
+    {{- include "secrets-dashboard.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "secrets-dashboard.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "secrets-dashboard.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "secrets-dashboard.serviceAccountName" . }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          env:
+            - name: AZURE_KEYVAULT_URL
+              value: {{ .Values.env.AZURE_KEYVAULT_URL | quote }}
+            - name: AZURE_CLIENT_ID
+              value: {{ .Values.env.AZURE_CLIENT_ID | quote }}
+            - name: AZURE_CLIENT_SECRET
+              value: {{ .Values.env.AZURE_CLIENT_SECRET | quote }}
+            - name: AZURE_TENANT_ID
+              value: {{ .Values.env.AZURE_TENANT_ID | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

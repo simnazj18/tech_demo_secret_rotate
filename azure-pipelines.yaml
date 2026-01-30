@@ -1,0 +1,68 @@
+trigger: none # Triggered automatically by Logic App/Function, not commits
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+- name: SecretName
+  displayName: 'Name of the Secret in AKV'
+  type: string
+  default: 'SQLPassword'
+- name: K8sSecretName
+  displayName: 'Name of the Secret object in Kubernetes'
+  type: string
+  default: 'sql-secrets'
+- name: K8sKey
+  displayName: 'Key inside the K8s Secret (e.g. password)'
+  type: string
+  default: 'password'
+- name: DeploymentName
+  displayName: 'Name of the Deployment to restart'
+  type: string
+  default: 'sql-server'
+
+variables:
+  azureSubscription: 'AzureConnection' # Replace with your Service Connection Name
+  resourceGroup: 'rg-secrets-demo'
+  aksCluster: 'cluster-techdemo'
+  keyVaultName: 'kv-techdemo-1769683213'
+
+steps:
+- task: AzureCLI@2
+  displayName: 'Sync Secret to AKS'
+  inputs:
+    azureSubscription: $(azureSubscription)
+    scriptType: 'bash'
+    scriptLocation: 'inlineScript'
+    inlineScript: |
+      echo ">>> Starting Rotation for ${{ parameters.SecretName }}"
+
+      # 1. Fetch the NEW value from Azure Key Vault
+      # We use 'az keyvault secret show' to get the latest version
+      echo "Fetching new secret from Key Vault..."
+      NEW_VALUE=$(az keyvault secret show --name ${{ parameters.SecretName }} --vault-name $(keyVaultName) --query value -o tsv)
+
+      if [ -z "$NEW_VALUE" ]; then
+        echo "##vso[task.logissue type=error]Failed to fetch secret from AKV"
+        exit 1
+      fi
+
+      # 2. Connect to AKS Cluster
+      echo "Connecting to AKS..."
+      az aks get-credentials --resource-group $(resourceGroup) --name $(aksCluster) --overwrite-existing
+
+      # 3. Update the Kubernetes Secret
+      # We use --dry-run to generate the YAML, then apply it.
+      # This updates just the specific key (e.g. 'password') while keeping other keys intact.
+      echo "Updating Kubernetes Secret: ${{ parameters.K8sSecretName }}"
+      
+      kubectl create secret generic ${{ parameters.K8sSecretName }} \
+        --from-literal=${{ parameters.K8sKey }}=$NEW_VALUE \
+        --dry-run=client -o yaml | kubectl apply -f -
+
+      # 4. Zero-Downtime Rollout
+      # Force the pod to restart so it picks up the new environment variable/volume
+      echo "Restarting Deployment: ${{ parameters.DeploymentName }}"
+      kubectl rollout restart deployment/${{ parameters.DeploymentName }}
+
+      echo ">>> Rotation Complete. New pods will use the new secret."

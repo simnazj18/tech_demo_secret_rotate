@@ -1,0 +1,69 @@
+trigger:
+- main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  # Container Registry Config
+  dockerRegistryServiceConnection: 'AzureConnection' # Reusing the service connection
+  imageRepository: 'secrets-dashboard'
+  containerRegistry: 'acrtechdemo1769694213.azurecr.io'
+  dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
+  tag: '$(Build.BuildId)'
+  
+  # Kubernetes Config
+  azureSubscription: 'AzureConnection'
+  resourceGroup: 'rg-secrets-demo'
+  kubernetesCluster: 'cluster-techdemo'
+  namespace: 'default'
+
+stages:
+- stage: Build
+  displayName: Build and push stage
+  jobs:
+  - job: Build
+    displayName: Build
+    steps:
+    - task: Docker@2
+      displayName: Build and push an image to container registry
+      inputs:
+        command: buildAndPush
+        repository: $(imageRepository)
+        dockerfile: $(dockerfilePath)
+        containerRegistry: $(dockerRegistryServiceConnection)
+        tags: |
+          $(tag)
+          latest
+
+- stage: Deploy
+  displayName: Deploy to AKS
+  dependsOn: Build
+  jobs:
+  - job: Deploy
+    displayName: Deploy
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Deploy via Helm'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          echo "Connecting to AKS..."
+          az aks get-credentials --resource-group $(resourceGroup) --name $(kubernetesCluster) --overwrite-existing
+
+          echo "Installing Helm..."
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+          echo "Deploying Helm Chart..."
+          # Navigate to chart directory or reference it relative to root
+          # Note: We pass the NEW tag we just built
+          
+          helm upgrade --install secrets-dash ./charts/secrets-dashboard \
+            --set image.repository="$(containerRegistry)/$(imageRepository)" \
+            --set image.tag="$(tag)" \
+            --set env.AZURE_KEYVAULT_URL="https://kv-techdemo-1769683213.vault.azure.net/" \
+            --set env.AZURE_CLIENT_ID="ae56138f-d36a-443b-b2f8-1bc3d8b68c59" \
+            --set env.AZURE_CLIENT_SECRET="0Er8Q~E5SCdNeLXS7ziEeW6~ohC2a5kBmDK1Vb7f" \
+            --set env.AZURE_TENANT_ID="1dcc587a-e945-4997-ba86-712dcdfabb36"
