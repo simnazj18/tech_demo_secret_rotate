@@ -5,14 +5,14 @@ pool:
   vmImage: 'ubuntu-latest'
 
 variables:
-  # Container Registry Config
-  dockerRegistryServiceConnection: 'AzureConnection' # Reusing the service connection
+  # Container Registry Config (Needs "Docker Registry" Connection)
+  dockerRegistryServiceConnection: 'AcrConnection'
   imageRepository: 'secrets-dashboard'
   containerRegistry: 'acrtechdemo1769694213.azurecr.io'
   dockerfilePath: '$(Build.SourcesDirectory)/Dockerfile'
   tag: '$(Build.BuildId)'
   
-  # Kubernetes Config
+  # Kubernetes Config (Needs "Azure Resource Manager" Connection)
   azureSubscription: 'AzureConnection'
   resourceGroup: 'rg-secrets-demo'
   kubernetesCluster: 'cluster-techdemo'
