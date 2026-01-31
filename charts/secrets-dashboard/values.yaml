@@ -1,12 +1,13 @@
 replicaCount: 1
 
 image:
-  repository: secrets-dashboard
+  repository: secretrotate2026.azurecr.io/secrets-dashboard
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"
 
-imagePullSecrets: []
+imagePullSecrets:
+  - name: acr-secret
 nameOverride: ""
 fullnameOverride: ""
 
