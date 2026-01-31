@@ -1,0 +1,65 @@
+name: Deploy to AKS
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Build and Push Docker Image
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      
+      - name: Build and Push
+        run: |
+          docker build -t ${{ secrets.ACR_LOGIN_SERVER }}/secrets-dashboard:${{ github.run_id }} .
+          docker push ${{ secrets.ACR_LOGIN_SERVER }}/secrets-dashboard:${{ github.run_id }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS Context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: 'rg-secrets-demo'
+          cluster-name: 'cluster-techdemo'
+
+      - name: Setup Helm
+        uses: azure/setup-helm@v3
+
+      - name: Deploy with Helm
+        run: |
+          helm upgrade --install secrets-dash ./charts/secrets-dashboard \
+            --set image.repository="${{ secrets.ACR_LOGIN_SERVER }}/secrets-dashboard" \
+            --set image.tag="${{ github.run_id }}" \
+            --set env.AZURE_KEYVAULT_URL="https://kv-techdemo-1769683213.vault.azure.net/" \
+            --set env.AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
+            --set env.AZURE_CLIENT_SECRET="${{ secrets.AZURE_CLIENT_SECRET }}" \
+            --set env.AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}"
