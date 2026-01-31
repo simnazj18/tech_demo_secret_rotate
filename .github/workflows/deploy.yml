@@ -22,9 +22,15 @@ jobs:
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      - name: Build and Push Docker Image
+        uses: azure/docker-login@v1
+        with:
+          login-server: secretrotate2026.azurecr.io
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+      
       - name: Build and Push
         run: |
-          az acr login --name secretrotate2026
           docker build -t secretrotate2026.azurecr.io/secrets-dashboard:${{ github.run_id }} .
           docker push secretrotate2026.azurecr.io/secrets-dashboard:${{ github.run_id }}
 
