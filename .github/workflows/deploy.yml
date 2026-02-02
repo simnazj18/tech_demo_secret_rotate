@@ -57,9 +57,4 @@ jobs:
 
       - name: Deploy with Helm
         run: |
-          helm upgrade --install secrets-dash ./charts/secrets-dashboard \
-            --set image.repository="secretrotate2026.azurecr.io/secrets-dashboard" \
-            --set image.tag="${{ github.run_id }}" \
-            --set env.AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" \
-            --set env.AZURE_CLIENT_SECRET="${{ secrets.AZURE_CLIENT_SECRET }}" \
-            --set env.AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}"
+          helm upgrade --install secrets-dash ./charts/secrets-dashboard --set image.repository="secretrotate2026.azurecr.io/secrets-dashboard" --set image.tag="${{ github.run_id }}" --set env.AZURE_CLIENT_ID="${{ secrets.AZURE_CLIENT_ID }}" --set env.AZURE_CLIENT_SECRET="${{ secrets.AZURE_CLIENT_SECRET }}" --set env.AZURE_TENANT_ID="${{ secrets.AZURE_TENANT_ID }}"
