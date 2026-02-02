@@ -47,4 +47,4 @@ resources: {}
 
 # App Specific Config
 env:
-  AZURE_KEYVAULT_URL: "https://CHANGE_ME.vault.azure.net/"
+  AZURE_KEYVAULT_URL: "https://kv-techdemo-1769683213.vault.azure.net/"
